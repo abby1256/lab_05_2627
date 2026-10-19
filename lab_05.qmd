@@ -20,27 +20,48 @@ When you have finished the lab, there are more questions on the same data in `la
 In the directory `data/simpsons` there are four CSV files taken (and lightly sanitised) from [Kaggle](https://www.kaggle.com/datasets/prashant111/the-simpsons-dataset/data).
 Note that some columns have been dropped from `simpsons_script_lines` to make the exercise more interesting.
 
-- [ ] Load all four of the files
+- [x] Load all four of the files
 
 ::: {.solution}
+```{r}
+library(tidyverse)
+characters <- read_csv("data/simpsons/simpsons_characters.csv")
+head(characters)
 
+episodes <- read_csv("data/simpsons/simpsons_episodes.csv")
+head(episodes)
+
+locations <- read_csv("data/simpsons/simpsons_locations.csv")
+#head(locations)
+locations
+
+script_lines <- read_csv("data/simpsons/simpsons_script_lines.csv")
+#head(script_lines)
+script_lines
+```
 :::
 
-- [ ] Before joining anything, look at the first few rows of each table. What does one row of each table represent? Which columns link the tables together, and would you describe each link as one-to-one, one-to-many or many-to-many?
+- [x] Before joining anything, look at the first few rows of each table. What does one row of each table represent? Which columns link the tables together, and would you describe each link as one-to-one, one-to-many or many-to-many?
 
 ::: {.solution}
-
+Each row is the individual line from a script.
+The id from characters links to the character_id from script_lines; the id from episodes links to episode_id from script_lines; the id from locations links to location_id from script_lines.
+The link from the tables of the characters, locations and episodes is one to many.
 :::
 
 
 Answer the following research questions using `join` functions.
 (Make sure your outputs print e.g. location or character names, not just IDs).
 
-- [ ] Which character and location pairs have the most lines?
-- [ ] Which episodes feature the most characters? (Hint: look at the `n_distinct` function. Is every script line spoken by a character?)
+- [x] Which character and location pairs have the most lines?
+- [x] Which episodes feature the most characters? (Hint: look at the `n_distinct` function. Is every script line spoken by a character?)
 
 ::: {.solution}
+```{r}
+script_lines |> inner_join(characters, by = c(character_id = "id")) |> inner_join(locations, by = c(location_id = "id")) |> group_by(character_name, location_name) |> summarise(n_lines = n()) |> arrange(desc(n_lines))
 
+script_lines |> inner_join(characters, by = c(character_id = "id")) |> inner_join(episodes, by = c(episode_id = "id")) |> select(character_name, title) |> group_by(title) |> summarise(number_of_characters = n_distinct(character_name)) |> arrange(desc(number_of_characters))
+```
 :::
 
 ### Task 1b: Choosing a Join
@@ -48,13 +69,26 @@ Answer the following research questions using `join` functions.
 All of the joins in Task 1 were inner joins, which keep only the rows that have a match in *both* tables.
 In this task we look at what that throws away.
 
-- [ ] Join `simpsons_script_lines` to `simpsons_locations`, once with `inner_join` and once with `left_join`. How many rows does each result have? Why are they different?
-- [ ] Look at some of the rows that appear in the `left_join` result but not the `inner_join` one. What do they have in common?
-- [ ] Which episodes in `simpsons_episodes` have no script lines at all? (Hint: see "Other Types of Join" in the Week 5 notes.) Is there a pattern?
-- [ ] In Task 1, we used `inner_join` to find which character and location pairs have the most lines. Was that the right choice?
+- [x] Join `simpsons_script_lines` to `simpsons_locations`, once with `inner_join` and once with `left_join`. How many rows does each result have? Why are they different?
+- [x] Look at some of the rows that appear in the `left_join` result but not the `inner_join` one. What do they have in common?
+- [x] Which episodes in `simpsons_episodes` have no script lines at all? (Hint: see "Other Types of Join" in the Week 5 notes.) Is there a pattern?
+- [x] In Task 1, we used `inner_join` to find which character and location pairs have the most lines. Was that the right choice?
 
 ::: {.solution}
+```{r}
+inner_location <- script_lines |> inner_join(locations, by = c(location_id = "id"))
+inner_location
+left_location <- script_lines |> left_join(locations, by = c(location_id = "id"))
+left_location
+setdiff(left_location$id, inner_location$id)
+left_location |> filter(id %in% setdiff(left_location$id, inner_location$id))
 
+episodes |> anti_join(script_lines, by = c(id = "episode_id")) |> left_join(script_lines, by = c(id = "episode_id"))
+```
+They all have the location_id as NA.
+The left join has more rows because the inner_join does not keep script lines with no location.
+They all have NA in all the columns of the script line table.
+It was the right choice because we were only interested in complete pairs. 
 :::
 
 ### Task 2: String Processing
@@ -67,7 +101,10 @@ Answer the following research questions:
 - [ ] In how many episodes are donuts / doughnuts mentioned? (Hint: be careful about capitalisation.)
 
 ::: {.solution}
-
+```{r}
+script_lines |> mutate(length_of_line = str_length(spoken_words))  
+#filter(str_length(spoken_words) == max(str_length(spoken_words)))
+```
 :::
 
 ### Task 3a: Parsing Dates
