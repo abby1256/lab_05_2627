@@ -95,16 +95,19 @@ It was the right choice because we were only interested in complete pairs.
 
 Answer the following research questions:
 
-- [ ] Which episode has the longest line (in terms of `spoken_words`)?
-- [ ] Print that line in full (e.g. with `cat`). Does it look like a single line of dialogue? Find the same line in the raw CSV file: what do you think has gone wrong?
+- [x] Which episode has the longest line (in terms of `spoken_words`)?
+- [x] Print that line in full (e.g. with `cat`). Does it look like a single line of dialogue? Find the same line in the raw CSV file: what do you think has gone wrong?
 - [ ] How many values of `spoken_words` have this problem? Remove them, and find the longest line again. (Hint: each row of a CSV file ends with a *newline* character, which `R` writes as `"\n"`. You can search for it with `str_detect` like any other text.)
 - [ ] In how many episodes are donuts / doughnuts mentioned? (Hint: be careful about capitalisation.)
 
 ::: {.solution}
 ```{r}
-script_lines |> mutate(length_of_line = str_length(spoken_words))  
-#filter(str_length(spoken_words) == max(str_length(spoken_words)))
+longest_line <- script_lines |> select(episode_id, spoken_words, id) |> mutate(length_of_line = str_length(spoken_words)) |>  arrange(desc(length_of_line)) |> head(1) |> left_join(select(episodes, id, title), by = c(episode_id = "id"))
+longest_line
+cat(longest_line$spoken_words)
+# or longest_line$spoken_words
 ```
+The longest line in the raw csv file seems to have multiple lines of dialogue, because it has multiple id numbers within it; it hasn't been separated properly. 
 :::
 
 ### Task 3a: Parsing Dates
