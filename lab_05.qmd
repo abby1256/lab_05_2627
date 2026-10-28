@@ -97,8 +97,8 @@ Answer the following research questions:
 
 - [x] Which episode has the longest line (in terms of `spoken_words`)?
 - [x] Print that line in full (e.g. with `cat`). Does it look like a single line of dialogue? Find the same line in the raw CSV file: what do you think has gone wrong?
-- [ ] How many values of `spoken_words` have this problem? Remove them, and find the longest line again. (Hint: each row of a CSV file ends with a *newline* character, which `R` writes as `"\n"`. You can search for it with `str_detect` like any other text.)
-- [ ] In how many episodes are donuts / doughnuts mentioned? (Hint: be careful about capitalisation.)
+- [x] How many values of `spoken_words` have this problem? Remove them, and find the longest line again. (Hint: each row of a CSV file ends with a *newline* character, which `R` writes as `"\n"`. You can search for it with `str_detect` like any other text.)
+- [x] In how many episodes are donuts / doughnuts mentioned? (Hint: be careful about capitalisation.)
 
 ::: {.solution}
 ```{r}
@@ -106,8 +106,23 @@ longest_line <- script_lines |> select(episode_id, spoken_words, id) |> mutate(l
 longest_line
 cat(longest_line$spoken_words)
 # or longest_line$spoken_words
+
+problem_lines <- script_lines |> select(episode_id, spoken_words, id) |> filter(str_detect(spoken_words, "\n") == TRUE)
+problem_lines
+count(problem_lines)
+
+correct_lines <- script_lines |> select(episode_id, spoken_words, id) |> filter(str_detect(spoken_words, "\n") == FALSE)
+correct_lines
+
+longest_line2 <- correct_lines |> mutate(length_of_line = str_length(spoken_words)) |>  arrange(desc(length_of_line)) |> head(1) |> left_join(select(episodes, id, title), by = c(episode_id = "id"))
+cat(longest_line2$spoken_words)
+
+doughnuts <- script_lines |> select(spoken_words, id) |> mutate(spoken_words = str_to_lower(spoken_words)) |> filter(str_detect(spoken_words, "doughnut") == TRUE | str_detect(spoken_words, "donut") == TRUE)
+count(doughnuts)
 ```
-The longest line in the raw csv file seems to have multiple lines of dialogue, because it has multiple id numbers within it; it hasn't been separated properly. 
+The longest line in the raw csv file seems to have multiple lines of dialogue, because it has multiple id numbers within it; it hasn't been separated properly.
+There are 22 lines which have this problem. 
+There are 109 times that doughnuts have been mentioned. 
 :::
 
 ### Task 3a: Parsing Dates
@@ -127,12 +142,23 @@ first_episodes <- tibble(
 first_episodes
 ```
 
-- [ ] Convert each of `uk_date`, `us_date` and `long_date` into a date, using `lubridate`. Check that all three give the same dates.
-- [ ] What happens if you use the wrong function, for example `dmy` on `us_date`? Which dates fail to parse, and which are wrong without any warning?
-- [ ] `excel_date` contains the same dates stored as Excel date numbers. Convert these into dates too. (Hint: see the Week 5 notes.)
+- [x] Convert each of `uk_date`, `us_date` and `long_date` into a date, using `lubridate`. Check that all three give the same dates.
+- [x] What happens if you use the wrong function, for example `dmy` on `us_date`? Which dates fail to parse, and which are wrong without any warning?
+- [x] `excel_date` contains the same dates stored as Excel date numbers. Convert these into dates too. (Hint: see the Week 5 notes.)
 
 ::: {.solution}
+```{r}
+library(janitor)
+first_episodes2 <- first_episodes |> mutate(uk_date = dmy(uk_date), us_date = mdy(us_date), long_date = mdy(long_date))
+first_episodes2
 
+first_episodes3 <- first_episodes |> mutate(uk_date = dmy(uk_date), us_date = dmy(us_date), long_date = mdy(long_date))
+first_episodes3
+
+first_episodes4 <- first_episodes |> mutate(uk_date = dmy(uk_date), us_date = mdy(us_date), long_date = mdy(long_date), excel_date = excel_numeric_to_date(excel_date))
+first_episodes4
+```
+If the date is less than or equal to 12 then swapping the day and month works so no error is given, but if it is more than 12 then it is invalid.
 :::
 
 ### Task 3b: Date Processing
@@ -156,20 +182,34 @@ It has the following columns:
 - `volume`: The amount traded in that day.
 - `Name`: The stock's ticker symbol, a short code such as `AAL`, `GOOGL` or `BRK.B`.
 
-- [ ] The column names are not consistently formatted: one of them starts with a capital letter. Use `clean_names` to fix this, and check the new column names.
+- [x] The column names are not consistently formatted: one of them starts with a capital letter. Use `clean_names` to fix this, and check the new column names.
 
 ::: {.solution}
-
+```{r}
+stock_data <- stock_data |> clean_names(case = "snake")
+stock_data
+```
 :::
 
 Answer the following research questions:
 
-- [ ] Using the `yday` function, find which day of the year has the lowest trading volume on average.
-- [ ] Is a given `yday` always the same date? Compare `yday` for 24 December 2015 and 24 December 2016. Then redo the previous question, grouping by month and day instead.
-- [ ] Why might this day have such a low trading volume?
+- [x] Using the `yday` function, find which day of the year has the lowest trading volume on average.
+- [x] Is a given `yday` always the same date? Compare `yday` for 24 December 2015 and 24 December 2016. Then redo the previous question, grouping by month and day instead.
+- [x] Why might this day have such a low trading volume?
 
 ::: {.solution}
+```{r}
+stock_data |> select(date, volume) |> group_by(day = yday(date)) |> summarise(average_trading_volume = mean(volume, na.rm = TRUE)) |> arrange(average_trading_volume) |> head(1)
 
+yday(ymd("2015-12-24"))
+yday(ymd("2016-12-24"))
+
+stock_data |> select(date, volume) |> group_by(day = mday(date), month = month(date)) |> summarise(average_trading_volume = mean(volume, na.rm = TRUE)) |> arrange(average_trading_volume) |> head(1)
+
+```
+Day 358, which is christmas eve, has the lowest average trading volume.
+The yday of each date is not consistent across the years because of the 29th february.
+The 24th of December has the lowest trading volume on average, probably because it is christmas eve.
 :::
 
 ## Finished? {.unnumbered}

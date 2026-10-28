@@ -30,23 +30,40 @@ stock_data <- read_csv("data/all_stocks_5yr.csv") |>
 These questions follow on from Tasks 1 and 1b of the lab.
 (Make sure your outputs print character names, not just IDs).
 
-- [ ] Which characters have lines in the most episodes?
-- [ ] **Extension:** Which characters appear together most frequently in episodes?
+- [x] Which characters have lines in the most episodes?
+- [x] **Extension:** Which characters appear together most frequently in episodes?
 
 ::: {.solution}
+```{r}
+simpsons_script_lines |> select(character_id, episode_id) |> group_by(character_id) |> filter(is.na(character_id) == FALSE) |> summarise(episode_number = n_distinct(episode_id)) |> arrange(desc(episode_number)) |> left_join(simpsons_characters, select(character_name), by = c(character_id = "id"))
 
+episode_characters <- simpsons_script_lines |> filter(!is.na(character_id)) |> select(episode_id, character_id) |> distinct()
+
+episode_characters |> inner_join(episode_characters, by = "episode_id", relationship = "many-to-many") |>  filter(character_id.x < character_id.y) |> group_by(character_id.x, character_id.y) |> summarise(episodes_together = n(), .groups = "drop") |> left_join(select(simpsons_characters, character_name, id), by = c(character_id.x = "id")) |> left_join(select(simpsons_characters, character_name, id), by = c(character_id.y = "id")) |> select(character_name.x, character_name.y, episodes_together) |> arrange(desc(episodes_together))
+``` 
 :::
 
 ### String Processing
 
 These questions follow on from Task 2 of the lab.
 
-- [ ] How many lines contain exclamation marks?
-- [ ] **Extension:** Read about *regular expressions* (see the Regular Expressions tip in the Week 5 notes, and try [regex101](https://regex101.com/)). In the lab you counted the episodes that mention donuts / doughnuts. Answer that question again, this time using a single `str_detect` with a regular expression that matches both "donut" and "doughnut".
-- [ ] Some location names are written in capitals (e.g. `KITCHEN`) and others are not (e.g. `Simpson Home`). How many are in capitals? Use `str_to_title` to give all the location names consistent capitalisation. Look through the results: does `str_to_title` always give what you want?
+- [x] How many lines contain exclamation marks?
+- [x] **Extension:** Read about *regular expressions* (see the Regular Expressions tip in the Week 5 notes, and try [regex101](https://regex101.com/)). In the lab you counted the episodes that mention donuts / doughnuts. Answer that question again, this time using a single `str_detect` with a regular expression that matches both "donut" and "doughnut".
+- [x] Some location names are written in capitals (e.g. `KITCHEN`) and others are not (e.g. `Simpson Home`). How many are in capitals? Use `str_to_title` to give all the location names consistent capitalisation. Look through the results: does `str_to_title` always give what you want?
 
 ::: {.solution}
+```{r}
+script_lines |> select(spoken_words) |> filter(str_detect(spoken_words, "!") == TRUE) |> summarise(n())
+#or nrow()
 
+simpsons_script_lines |> filter(str_detect(str_to_lower(spoken_words), "do(ugh)?nut")) |> distinct(episode_id) |> nrow()
+
+simpsons_locations |> select(location_name) |> filter(location_name == str_to_upper(location_name)) |> nrow()
+
+simpsons_locations <- simpsons_locations |> mutate(location_name = str_to_title(location_name))
+simpsons_locations
+```
+It does not know that short words/abbreviations like RV need to have the whole word capitalised.
 :::
 
 ### Dates
@@ -55,17 +72,23 @@ These questions follow on from Tasks 3a and 3b of the lab.
 
 In `simpsons_episodes`, `read_csv` has already recognised `original_air_date` as a date.
 
-- [ ] On which day of the week did episodes first air? Is there anything surprising? (Hint: look at the formatting section of the Week 5 notes; the format code for the day of the week is `%A`.)
-- [ ] How many years ago did the first episode in the data air?
+- [x] On which day of the week did episodes first air? Is there anything surprising? (Hint: look at the formatting section of the Week 5 notes; the format code for the day of the week is `%A`.)
+- [x] How many years ago did the first episode in the data air?
 
 ::: {.solution}
+```{r}
+simpsons_episodes |> select(original_air_date) |> arrange(original_air_date) |> mutate(day_of_week = format(original_air_date, "%A"))
 
+simpsons_episodes |> select(original_air_date) |> summarise(years_ago = 2026 - year(min(original_air_date)))
+```
 :::
 
 The next question uses the stock market data from Task 3b of the lab.
 
-- [ ] What is the average trading volume for each month, across all years?
+- [x] What is the average trading volume for each month, across all years?
 
 ::: {.solution}
-
+```{r}
+stock_data |> select(date, volume) |> group_by(month(date), month_name = format(date, "%B")) |> summarise(average_trading_volume = mean(volume), .groups = "drop") |> select(month_name, average_trading_volume) 
+```
 :::
